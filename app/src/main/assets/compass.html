@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Compass</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            background: radial-gradient(circle at center, #1a2236 0%, #080b12 100%);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .heading-degrees {
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-variant-numeric: tabular-nums;
+        }
+        .heading-direction {
+            font-size: 20px;
+            color: #60a5fa;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .compass-wrap {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass-dial {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid #1e293b;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(0, 0, 0, 0.6);
+            transition: transform 0.1s ease-out;
+        }
+        .arrow-indicator {
+            position: absolute;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 16px solid #ef4444;
+            z-index: 10;
+        }
+        .center-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #ef4444;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .cardinal {
+            position: absolute;
+            font-weight: bold;
+            font-size: 20px;
+            transform: translate(-50%, -50%);
+        }
+        .cardinal.n { top: 24px; left: 50%; color: #ef4444; }
+        .cardinal.s { bottom: 6px; left: 50%; color: #94a3b8; }
+        .cardinal.e { top: 50%; right: 10px; color: #94a3b8; }
+        .cardinal.w { top: 50%; left: 24px; color: #94a3b8; }
+
+        .tick {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 10px;
+            background: #475569;
+            transform-origin: center -134px;
+        }
+        .tick.major {
+            width: 3px;
+            height: 16px;
+            background: #94a3b8;
+            transform-origin: center -131px;
+        }
+
+        .footer {
+            margin-top: 32px;
+            font-size: 13px;
+            color: #64748b;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="heading-degrees" id="degrees">0°</div>
+        <div class="heading-direction" id="direction">N</div>
+    </div>
+
+    <div class="compass-wrap">
+        <div class="arrow-indicator"></div>
+        <div class="compass-dial" id="dial">
+            <div class="cardinal n">N</div>
+            <div class="cardinal e">E</div>
+            <div class="cardinal s">S</div>
+            <div class="cardinal w">W</div>
+            <div id="ticks"></div>
+        </div>
+        <div class="center-dot"></div>
+    </div>
+
+    <div class="footer" id="status">
+        Android Compass WebView
+    </div>
+
+    <script>
+        const dial = document.getElementById('dial');
+        const degreesEl = document.getElementById('degrees');
+        const directionEl = document.getElementById('direction');
+        const ticksContainer = document.getElementById('ticks');
+
+        // Генерируем деления компаса
+        for (let i = 0; i < 360; i += 15) {
+            if (i % 90 === 0) continue;
+            const tick = document.createElement('div');
+            tick.className = 'tick' + (i % 30 === 0 ? ' major' : '');
+            tick.style.transform = `translate(-50%, -50%) rotate(${i}deg) translateY(-138px)`;
+            ticksContainer.appendChild(tick);
+        }
+
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+        function setHeading(deg) {
+            const normalized = ((deg % 360) + 360) % 360;
+            const rounded = Math.round(normalized);
+            degreesEl.textContent = `${rounded}°`;
+
+            const index = Math.round(normalized / 45) % 8;
+            directionEl.textContent = directions[index];
+
+            // Вращаем циферблат против азимута
+            dial.style.transform = `rotate(${-normalized}deg)`;
+        }
+
+        // Вызов из Android WebView
+        window.updateCompass = function(heading) {
+            setHeading(heading);
+        };
+
+        // Fallback для DeviceOrientation API если запущено в обычном браузере
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientationabsolute', (e) => {
+                if (e.alpha !== null) setHeading(360 - e.alpha);
+            }, true);
+            window.addEventListener('deviceorientation', (e) => {
+                if (e.webkitCompassHeading) {
+                    setHeading(e.webkitCompassHeading);
+                } else if (e.alpha !== null) {
+                    setHeading(360 - e.alpha);
+                }
+            }, true);
+        }
+    </script>
+</body>
+</html>
